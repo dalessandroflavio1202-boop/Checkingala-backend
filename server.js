@@ -97,14 +97,23 @@ app.get('/check', (req, res) => {
       return res.send(html);
     }
 
-    // primo ingresso → aggiorno il DB
-    const now = new Date().toISOString(); // formato ISO
+    // primo ingresso → aggiorno il DB con orario italiano
+const now = new Date();
+const formatter = new Intl.DateTimeFormat('it-IT', {
+  timeZone: 'Europe/Rome',
+  dateStyle: 'short',
+  timeStyle: 'medium'
+});
+const oraItaliana = formatter.format(now);
 
-    db.run(
-      'UPDATE guests SET entrata = 1, ora_ingresso = ? WHERE id = ?',
-      [now, id],
-      function (updateErr) {
-        if (updateErr) {
+db.run(
+  'UPDATE guests SET entrata = 1, ora_ingresso = ? WHERE id = ?',
+  [oraItaliana, id],
+  function (updateErr) {
+    ...
+  }
+);
+
           console.error(updateErr);
           return res.send("Errore interno durante l'aggiornamento.");
         }
