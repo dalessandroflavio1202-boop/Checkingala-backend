@@ -129,3 +129,98 @@ app.get('/', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server in ascolto sulla porta ${PORT}`);
 });
+// RESET TOTALE: imposta entrata=0 e ora_ingresso=NULL
+app.get('/reset', (req, res) => {
+  const key = req.query.key;
+
+  if (key !== 'flavio2025') {
+    return res.status(403).send("Accesso negato.");
+  }
+
+  db.run(`UPDATE guests SET entrata = 0, ora_ingresso = NULL`, [], function(err) {
+    if (err) {
+      console.error(err);
+      return res.send("Errore durante il reset.");
+    }
+
+    res.send(`Reset completato. Invitati ripristinati: ${this.changes}`);
+  });
+});
+// REPORT: mostra lista invitati e stato ingresso
+app.get('/report', (req, res) => {
+  const key = req.query.key;
+
+  if (key !== 'flavio2025') {
+    return res.status(403).send("Accesso negato.");
+  }
+
+  db.all(`SELECT * FROM guests ORDER BY ora_ingresso IS NULL, ora_ingresso ASC`, (err, rows) => {
+    if (err) {
+      console.error(err);
+      return res.send("Errore durante il recupero del report.");
+    }
+
+    let html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Report Ingressi</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; }
+          h1 { text-align: center; }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+          }
+          th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+          }
+          th {
+            background: #333;
+            color: white;
+          }
+          tr:nth-child(even) { background: #f2f2f2; }
+          .ok { background: #c8e6c9 !important; }
+          .no { background: #ffcdd2 !important; }
+        </style>
+      </head>
+      <body>
+        <h1>Report Ingressi</h1>
+        <table>
+          <tr>
+            <th>ID</th>
+            <th>Nome</th>
+            <th>Sala</th>
+            <th>Entrato</th>
+            <th>Ora Ingresso</th>
+          </tr>
+    `;
+
+    rows.forEach((row) => {
+      html += `
+        <tr class="${row.entrata == 1 ? 'ok' : 'no'}">
+          <td>${row.id}</td>
+          <td>${row.nome}</td>
+          <td>${row.sala}</td>
+          <td>${row.entrata == 1 ? 'SI' : 'NO'}</td>
+          <td>${row.ora_ingresso ? row.ora_ingresso : '-'}</td>
+        </tr>
+      `;
+    });
+
+    html += `
+        </table>
+      </body>
+      </html>
+    `;
+
+    res.send(html);
+  });
+});
+
+
