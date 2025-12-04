@@ -60,11 +60,18 @@ function buildPage(backgroundColor, mainText, name, subtitleHtml) {
     <div class="name">${name || ''}</div>
     <div class="subtitle" style="font-size:8rem;">${subtitleHtml || ''}</div>
   </body>
-  </html>
-  `;
+  </html>`;
 }
 
-// endpoint principale: /check?id=XXXX
+// health check
+app.get('/', (req, res) => {
+  res.send('OK - server attivo');
+});
+
+
+// =========================
+//   CHECK INGRESSO
+// =========================
 app.get('/check', (req, res) => {
   const id = req.query.id;
 
@@ -72,7 +79,6 @@ app.get('/check', (req, res) => {
     return res.send("Errore: ID mancante.");
   }
 
-  // cerco l'ospite nel DB
   db.get('SELECT * FROM guests WHERE id = ?', [id], (err, row) => {
     if (err) {
       console.error(err);
@@ -86,7 +92,7 @@ app.get('/check', (req, res) => {
     const nome = row.nome;
     const sala = row.sala;
 
-    // già entrato → nessuna scrittura, solo pagina rossa
+    // se già entrato → rosso
     if (row.entrata === 1) {
       const html = buildPage(
         '#c62828',
@@ -97,23 +103,20 @@ app.get('/check', (req, res) => {
       return res.send(html);
     }
 
-    // primo ingresso → aggiorno il DB con orario italiano
-const now = new Date();
-const formatter = new Intl.DateTimeFormat('it-IT', {
-  timeZone: 'Europe/Rome',
-  dateStyle: 'short',
-  timeStyle: 'medium'
-});
-const oraItaliana = formatter.format(now);
+    // SEGNARE L'INGRESSO (orario italiano)
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('it-IT', {
+      timeZone: 'Europe/Rome',
+      dateStyle: 'short',
+      timeStyle: 'medium'
+    });
+    const oraItaliana = formatter.format(now);
 
-db.run(
-  'UPDATE guests SET entrata = 1, ora_ingresso = ? WHERE id = ?',
-  [oraItaliana, id],
-  function (updateErr) {
-    ...
-  }
-);
-
+    db.run(
+      'UPDATE guests SET entrata = 1, ora_ingresso = ? WHERE id = ?',
+      [oraItaliana, id],
+      function (updateErr) {
+        if (updateErr) {
           console.error(updateErr);
           return res.send("Errore interno durante l'aggiornamento.");
         }
@@ -130,15 +133,10 @@ db.run(
   });
 });
 
-// health check
-app.get('/', (req, res) => {
-  res.send('OK - server attivo');
-});
 
-app.listen(PORT, () => {
-  console.log(`Server in ascolto sulla porta ${PORT}`);
-});
-// RESET TOTALE: imposta entrata=0 e ora_ingresso=NULL
+// =========================
+//   RESET COMPLETO
+// =========================
 app.get('/reset', (req, res) => {
   const key = req.query.key;
 
@@ -155,7 +153,11 @@ app.get('/reset', (req, res) => {
     res.send(`Reset completato. Invitati ripristinati: ${this.changes}`);
   });
 });
-// REPORT: mostra lista invitati e stato ingresso
+
+
+// =========================
+//   REPORT COMPLETO
+// =========================
 app.get('/report', (req, res) => {
   const key = req.query.key;
 
@@ -163,7 +165,7 @@ app.get('/report', (req, res) => {
     return res.status(403).send("Accesso negato.");
   }
 
-  db.all(`SELECT * FROM guests ORDER BY ora_ingresso IS NULL, ora_ingresso ASC`, (err, rows) => {
+  db.all(`SELECT * FROM guests ORDER BY entrata DESC, ora_ingresso ASC`, (err, rows) => {
     if (err) {
       console.error(err);
       return res.send("Errore durante il recupero del report.");
@@ -233,3 +235,26 @@ app.get('/report', (req, res) => {
 });
 
 
+// =========================
+//   DOWNLOAD DB (per debug)
+// =========================
+app.get('/download-db', (req, res) => {
+  const key = req.query.key;
+
+  if (key !== 'flavio2025') {
+    return res.status(403).send("Accesso negato.");
+  }
+
+  res.download(dbPath, "db.sqlite", (err) => {
+    if (err) {
+      console.error("Errore nel download:", err);
+      res.status(500).send("Errore nel download del DB.");
+    }
+  });
+});
+
+
+// Avvio server
+app.listen(PORT, () => {
+  console.log(`Server in ascolto sulla porta ${PORT}`);
+});
