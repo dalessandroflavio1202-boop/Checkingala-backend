@@ -256,7 +256,7 @@ app.get('/reset', (req, res) => {
 });
 
 // =========================
-//   REPORT COMPLETO
+//   REPORT COMPLETO (auto refresh + contatori)
 // =========================
 app.get('/report', (req, res) => {
   const key = req.query.key;
@@ -271,6 +271,10 @@ app.get('/report', (req, res) => {
       return res.send("Errore durante il recupero del report.");
     }
 
+    const total = rows.length;
+    const totalEntrati = rows.filter(r => r.entrata == 1).length;
+    const totalAssenti = total - totalEntrati;
+
     let html = `
       <!DOCTYPE html>
       <html>
@@ -281,15 +285,32 @@ app.get('/report', (req, res) => {
         <style>
           body { font-family: Arial, sans-serif; padding: 20px; }
           h1 { text-align: center; }
+          .summary {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 10px;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+          }
+          .badge {
+            padding: 10px 20px;
+            border-radius: 999px;
+            font-weight: bold;
+          }
+          .badge-ok { background: #c8e6c9; }
+          .badge-no { background: #ffcdd2; }
+          .badge-total { background: #bbdefb; }
           table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
+            margin-top: 10px;
           }
           th, td {
             border: 1px solid #ccc;
-            padding: 8px;
+            padding: 6px;
             text-align: left;
+            font-size: 0.9rem;
           }
           th {
             background: #333;
@@ -299,9 +320,20 @@ app.get('/report', (req, res) => {
           .ok { background: #c8e6c9 !important; }
           .no { background: #ffcdd2 !important; }
         </style>
+        <script>
+          // Auto refresh ogni 3 secondi
+          setTimeout(function() {
+            window.location.reload();
+          }, 3000);
+        </script>
       </head>
       <body>
         <h1>Report Ingressi</h1>
+        <div class="summary">
+          <div class="badge badge-ok">Entrati: ${totalEntrati}</div>
+          <div class="badge badge-no">Assenti: ${totalAssenti}</div>
+          <div class="badge badge-total">Totale: ${total}</div>
+        </div>
         <table>
           <tr>
             <th>ID</th>
