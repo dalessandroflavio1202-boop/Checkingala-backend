@@ -68,7 +68,6 @@ app.get('/', (req, res) => {
   res.send('OK - server attivo');
 });
 
-
 // =========================
 //   CHECK INGRESSO
 // =========================
@@ -121,17 +120,23 @@ app.get('/check', (req, res) => {
           return res.send("Errore interno durante l'aggiornamento.");
         }
 
+        // this.changes = quante righe sono state aggiornate
+        console.log("DEBUG UPDATE:", { id, changes: this.changes });
+
+        const debugText = `DEBUG: aggiornate ${this.changes} righe per id = ${id}`;
+
         const html = buildPage(
           '#2e7d32',
           'ACCESSO CONSENTITO',
           nome,
-          `Sala: ${sala}`
+          `Sala: ${sala}<br><span style="font-size:2rem;">${debugText}</span>`
         );
         return res.send(html);
       }
     );
   });
 });
+
 
 
 // =========================
